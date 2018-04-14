@@ -5,4 +5,4 @@ Parent-of-origin effects, whereby specific phenotypes are differentially inherit
 
 
 NOTES:
-Statistical analysis can be found in the "GitHub Stats File (HSD).rmd", which references the data file found on this github page. 
+Statistical analysis can be found in the "GitHub Stats File (HSD).rmd", which references the data file found on this github page. "Contrasts Table HSD_FDR Corrected.csv" contains the results of all statistic comparisons analyzed for this paper. 
