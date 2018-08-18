@@ -40,7 +40,7 @@ dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
 
 Weight1.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
 Weight2.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F2"))
-Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F3"))
 Weight.F.results.df <- rbind(
       tidy(Weight1.F.Mod) %>% mutate(generation = "F1"),
       tidy(Weight2.F.Mod) %>% mutate(generation = "F2"),
@@ -130,7 +130,7 @@ dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
 
 Weight1.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
 Weight2.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F2"))
-Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F3"))
 Weight.M.results.df <- rbind(
       tidy(Weight1.M.Mod) %>% mutate(generation = "F1"),
       tidy(Weight2.M.Mod) %>% mutate(generation = "F2"),
@@ -220,7 +220,7 @@ dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
 
 Weight1.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
 Weight2.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F2"))
-Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F3"))
 Weight.F.results.df <- rbind(
       tidy(Weight1.F.Mod) %>% mutate(generation = "F1"),
       tidy(Weight2.F.Mod) %>% mutate(generation = "F2"),
@@ -310,7 +310,7 @@ dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
 
 Weight1.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
 Weight2.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F2"))
-Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F3"))
 Weight.M.results.df <- rbind(
       tidy(Weight1.M.Mod) %>% mutate(generation = "F1"),
       tidy(Weight2.M.Mod) %>% mutate(generation = "F2"),
