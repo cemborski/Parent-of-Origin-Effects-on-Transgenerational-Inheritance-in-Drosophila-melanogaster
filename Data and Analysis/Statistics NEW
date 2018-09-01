@@ -1,0 +1,1263 @@
+Packages Used:
+```{r}
+library(RCurl)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(reshape)
+library(car)
+library(lmtest)
+library(tidyr)
+library(dplyr)
+library(plyr)
+library(broom)
+library(nlme)
+library(multcomp)
+library(ggsignif)
+```
+
+Data
+```{r, echo=FALSE}
+data <- read.csv(text=getURL("https://raw.githubusercontent.com/cemborski/Parent-of-Origin-Effects-on-Transgenerational-Inheritance-in-Drosophila-melanogaster/master/Data%20and%20Analysis/dataNEW.csv"))
+
+dataH <- data %>% filter(!grepl("NSD", Treatment))
+dataN <- data %>% filter(!grepl("HSD", Treatment))
+
+head(data)
+```
+
+Treatment Contrasts relative to CD:
+```{r, echo=FALSE}
+#HSD Females
+dataH$Sex <- factor(dataH$Sex, levels=c("female", "male"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+
+Ta.1F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Ta.2F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Ta.3F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Ta.F.results.df <- rbind(
+      tidy(Ta.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Ta.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Ta.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "TAG") %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+  
+Y.1F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+Y.2F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+Y.3F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+Y.F.results.df <- rbind(
+      tidy(Y.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Y.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Y.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glycogen") %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+T.1F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+T.2F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+T.3F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+T.F.results.df <- rbind(
+      tidy(T.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(T.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(T.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Trehalose") %>%
+  mutate(treatment = "HSD") %>%  
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+G.1F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+G.2F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+G.3F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+G.F.results.df <- rbind(
+      tidy(G.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(G.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(G.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glucose")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+Fit.1F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH,Generation=="F1"))
+Fit.2F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH,Generation=="F2"))
+Fit.3F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH,Generation=="F3"))
+Fit.F.results.df <- rbind(
+      tidy(Fit.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Fit.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Fit.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Fitness")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental")))
+
+Weight1.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Weight2.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Weight.F.results.df <- rbind(
+      tidy(Weight1.F.Mod) %>% mutate(generation = "F1"),
+      tidy(Weight2.F.Mod) %>% mutate(generation = "F2"),
+      tidy(Weight3.F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Weight") %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+
+#HSD Males
+dataH$Sex <- factor(dataH$Sex, levels=c("male", "female"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+
+Ta.1M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+Ta.2M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+Ta.3M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+Ta.M.results.df <- rbind(
+      tidy(Ta.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(Ta.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(Ta.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "TAG")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+Y.1M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+Y.2M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+Y.3M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+Y.M.results.df <- rbind(
+      tidy(Y.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(Y.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(Y.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glycogen")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+T.1M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+T.2M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+T.3M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+T.M.results.df <- rbind(
+      tidy(T.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(T.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(T.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Trehalose")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+G.1M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F1"))
+G.2M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F2"))
+G.3M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH,Generation=="F3"))
+G.M.results.df <- rbind(
+      tidy(G.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(G.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(G.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glucose")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental"))) 
+
+Weight1.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Weight2.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Weight.M.results.df <- rbind(
+      tidy(Weight1.M.Mod) %>% mutate(generation = "F1"),
+      tidy(Weight2.M.Mod) %>% mutate(generation = "F2"),
+      tidy(Weight3.M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Weight")  %>%
+  mutate(treatment = "HSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MhPc", term), "Maternal", ifelse(grepl("McPh", term), "Paternal", "Parental")))
+
+Hrslts.df <- bind_rows(Ta.F.results.df, Y.F.results.df, T.F.results.df, G.F.results.df, Fit.F.results.df, Weight.F.results.df, Ta.M.results.df, Y.M.results.df, T.M.results.df, G.M.results.df, Weight.M.results.df) 
+
+HRslts.df <- rename(Hrslts.df, c("term"="contrast")) %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+
+results <- symnum(HRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+
+Hresults <- cbind(HRslts.df, results)
+
+#write.csv(Hresults, file = "Ch3 Contrasts HSD only TaYTGF (FDR).csv")
+
+
+
+#NSD Females
+dataN$Sex <- factor(dataN$Sex, levels=c("female", "male"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+
+Ta.1F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Ta.2F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Ta.3F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Ta.F.results.df <- rbind(
+      tidy(Ta.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Ta.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Ta.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "TAG")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+Y.1F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+Y.2F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+Y.3F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+Y.F.results.df <- rbind(
+      tidy(Y.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Y.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Y.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glycogen")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+T.1F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+T.2F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+T.3F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+T.F.results.df <- rbind(
+      tidy(T.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(T.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(T.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Trehalose")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+G.1F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+G.2F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+G.3F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+G.F.results.df <- rbind(
+      tidy(G.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(G.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(G.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glucose")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+Fit.1F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN,Generation=="F1"))
+Fit.2F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN,Generation=="F2"))
+Fit.3F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN,Generation=="F3"))
+Fit.F.results.df <- rbind(
+      tidy(Fit.1F.Mod) %>% mutate(generation = "F1"),
+      tidy(Fit.2F.Mod) %>% mutate(generation = "F2"),
+      tidy(Fit.3F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Fitness")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+Weight1.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Weight2.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Weight3.F.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Weight.F.results.df <- rbind(
+      tidy(Weight1.F.Mod) %>% mutate(generation = "F1"),
+      tidy(Weight2.F.Mod) %>% mutate(generation = "F2"),
+      tidy(Weight3.F.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexmale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Weight")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "female") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+#NSD Males
+dataN$Sex <- factor(dataN$Sex, levels=c("male", "female"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+
+Ta.1M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+Ta.2M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+Ta.3M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+Ta.M.results.df <- rbind(
+      tidy(Ta.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(Ta.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(Ta.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "TAG")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+Y.1M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+Y.2M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+Y.3M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+Y.M.results.df <- rbind(
+      tidy(Y.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(Y.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(Y.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glycogen")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+T.1M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+T.2M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+T.3M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+T.M.results.df <- rbind(
+      tidy(T.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(T.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(T.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Trehalose")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+G.1M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F1"))
+G.2M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F2"))
+G.3M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN,Generation=="F3"))
+G.M.results.df <- rbind(
+      tidy(G.1M.Mod) %>% mutate(generation = "F1"),
+      tidy(G.2M.Mod) %>% mutate(generation = "F2"),
+      tidy(G.3M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Glucose")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+Weight1.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Weight2.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Weight3.M.Mod <- glm(Sugar.Weight ~ Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Weight.M.results.df <- rbind(
+      tidy(Weight1.M.Mod) %>% mutate(generation = "F1"),
+      tidy(Weight2.M.Mod) %>% mutate(generation = "F2"),
+      tidy(Weight3.M.Mod) %>% mutate(generation = "F3")) %>%
+  filter(!grepl("Sexfemale", term))  %>% 
+  filter(grepl("Crosses", term)) %>%
+  mutate(metabolite = "Weight")  %>%
+  mutate(treatment = "NSD") %>% 
+  mutate(sex = "male") %>%
+  mutate(exposure = ifelse(grepl("MnPc", term), "Maternal", ifelse(grepl("McPn", term), "Paternal", "Parental"))) 
+
+
+Nrslts.df <- bind_rows(Ta.F.results.df, Y.F.results.df, T.F.results.df, G.F.results.df, Fit.F.results.df, Weight.F.results.df, Ta.M.results.df, Y.M.results.df, T.M.results.df, G.M.results.df, Weight.M.results.df) 
+
+NRslts.df <- rename(Nrslts.df, c("term"="contrast")) %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+
+results <- symnum(NRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+
+Nresults <- cbind(NRslts.df, results)
+
+#write.csv(Nresults, file = "Ch3 Contrasts NSD only TaYTGF (FDR).csv")
+
+NHrslts.df <- bind_rows(Nrslts.df, Hrslts.df)
+NHRslts.df <- rename(NHrslts.df, c("term"="contrast")) %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+results <- symnum(NHRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+NHresults <- cbind(NHRslts.df, results)
+#write.csv(NHresults, file = "Ch3 Contrasts N and H TaYTGF (FDR) 180901.csv")
+```
+Contrasts Between Exposure 
+```{r}
+#HSD Females (F1)
+dataH$Sex <- factor(dataH$Sex, levels=c("female", "male"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc","MhPh", "MhPc", "McPh"))
+
+Ta.1F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Ta.1F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.1F.comps <- glht(Ta.1F.Mod, Ta.1F.contrast.matrix) 
+Ta.1F <- summary(Ta.1F.comps) 
+
+Y.1F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Y.1F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.1F.comps <- glht(Y.1F.Mod, Y.1F.contrast.matrix) 
+Y.1F <- summary(Y.1F.comps) 
+
+T.1F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+T.1F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),  
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.1F.comps <- glht(T.1F.Mod, T.1F.contrast.matrix) 
+T.1F <- summary(T.1F.comps) 
+
+G.1F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+G.1F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.1F.comps <- glht(G.1F.Mod, G.1F.contrast.matrix) 
+G.1F <- summary(G.1F.comps) 
+
+Fit.1F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH, Generation=="F1"))
+Fit.1F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,1,-1, 0),  
+  'Both vs Paternal HSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal HSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal HSD' = c(0,1,-1/2, -1/2))
+Fit.1F.comps <- glht(Fit.1F.Mod, Fit.1F.contrast.matrix) 
+Fit.1F <- summary(Fit.1F.comps) 
+
+#HSD Males (F1)
+dataH$Sex <- factor(dataH$Sex, levels=c("male", "female"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+Ta.1M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Ta.1M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.1M.comps <- glht(Ta.1M.Mod, Ta.1M.contrast.matrix) 
+Ta.1M <- summary(Ta.1M.comps) 
+
+Y.1M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+Y.1M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.1M.comps <- glht(Y.1M.Mod, Y.1M.contrast.matrix) 
+Y.1M <- summary(Y.1M.comps) 
+
+T.1M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+T.1M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.1M.comps <- glht(T.1M.Mod, T.1M.contrast.matrix) 
+T.1M <- summary(T.1M.comps) 
+
+G.1M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F1"))
+G.1M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.1M.comps <- glht(G.1M.Mod, G.1M.contrast.matrix) 
+G.1M <- summary(G.1M.comps) 
+
+#HSD Female (F2)
+dataH$Sex <- factor(dataH$Sex, levels=c("female", "male"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+Ta.2F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Ta.2F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.2F.comps <- glht(Ta.2F.Mod, Ta.2F.contrast.matrix) 
+Ta.2F <- summary(Ta.2F.comps) 
+
+Y.2F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Y.2F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.2F.comps <- glht(Y.2F.Mod, Y.2F.contrast.matrix) 
+Y.2F <- summary(Y.2F.comps) 
+
+T.2F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+T.2F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.2F.comps <- glht(T.2F.Mod, T.2F.contrast.matrix) 
+T.2F <- summary(T.2F.comps) 
+
+G.2F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+G.2F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.2F.comps <- glht(G.2F.Mod, G.2F.contrast.matrix) 
+G.2F <- summary(G.2F.comps) 
+
+Fit.2F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH, Generation=="F2"))
+Fit.2F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,1,-1, 0),  
+  'Both vs Paternal HSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal HSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal HSD' = c(0,1,-1/2,-1/2))
+Fit.2F.comps <- glht(Fit.2F.Mod, Fit.2F.contrast.matrix) 
+Fit.2F <- summary(Fit.2F.comps) 
+
+#HSD Male (F2)
+dataH$Sex <- factor(dataH$Sex, levels=c("male", "female"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+Ta.2M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Ta.2M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.2M.comps <- glht(Ta.2M.Mod, Ta.2M.contrast.matrix) 
+Ta.2M <- summary(Ta.2M.comps) 
+
+Y.2M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+Y.2M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.2M.comps <- glht(Y.2M.Mod, Y.2M.contrast.matrix) 
+Y.2M <- summary(Y.2M.comps) 
+
+T.2M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+T.2M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.2M.comps <- glht(T.2M.Mod, T.2M.contrast.matrix) 
+T.2M <- summary(T.2M.comps) 
+
+G.2M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F2"))
+G.2M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.2M.comps <- glht(G.2M.Mod, G.2M.contrast.matrix) 
+G.2M <- summary(G.2M.comps) 
+
+#HSD Female (F3)
+dataH$Sex <- factor(dataH$Sex, levels=c("female", "male"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+Ta.3F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Ta.3F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.3F.comps <- glht(Ta.3F.Mod, Ta.3F.contrast.matrix) 
+Ta.3F <- summary(Ta.3F.comps) 
+
+Y.3F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Y.3F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.3F.comps <- glht(Y.3F.Mod, Y.3F.contrast.matrix) 
+Y.3F <- summary(Y.3F.comps) 
+
+T.3F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+T.3F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.3F.comps <- glht(T.3F.Mod, T.3F.contrast.matrix) 
+T.3F <- summary(T.3F.comps) 
+
+G.3F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+G.3F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.3F.comps <- glht(G.3F.Mod, G.3F.contrast.matrix) 
+G.3F <- summary(G.3F.comps) 
+
+Fit.3F.Mod <- glm(Fitness ~ Crosses, data=subset(dataH, Generation=="F3"))
+Fit.3F.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,1,-1, 0),  
+  'Both vs Paternal HSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal HSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal HSD' = c(0,1,-1/2, -1/2))
+Fit.3F.comps <- glht(Fit.3F.Mod, Fit.3F.contrast.matrix) 
+Fit.3F <- summary(Fit.3F.comps) 
+
+#HSD Male (F3)
+dataH$Sex <- factor(dataH$Sex, levels=c("male", "female"))
+dataH$Crosses <- factor(dataH$Crosses, levels=c("McPc", "MhPh", "MhPc", "McPh"))
+Ta.3M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Ta.3M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.3M.comps <- glht(Ta.3M.Mod, Ta.3M.contrast.matrix) 
+Ta.3M <- summary(Ta.3M.comps) 
+
+Y.3M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+Y.3M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.3M.comps <- glht(Y.3M.Mod, Y.3M.contrast.matrix) 
+Y.3M <- summary(Y.3M.comps) 
+
+T.3M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+T.3M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.3M.comps <- glht(T.3M.Mod, T.3M.contrast.matrix) 
+T.3M <- summary(T.3M.comps) 
+
+G.3M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataH, Generation=="F3"))
+G.3M.contrast.matrix <- rbind(
+  'Both vs Maternal HSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal HSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal HSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal HSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.3M.comps <- glht(G.3M.Mod, G.3M.contrast.matrix) 
+G.3M <- summary(G.3M.comps) 
+
+#HSD Combined Results Dataframe
+HBtwnrslts.df <- rbind(tidy(Ta.1F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Y.1F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(T.1F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(G.1F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Fit.1F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Ta.1M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Y.1M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(T.1M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(G.1M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Ta.2F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Y.2F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(T.2F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(G.2F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Fit.2F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Ta.2M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Y.2M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(T.2M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(G.2M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Ta.3F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Y.3F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(T.3F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(G.3F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Fit.3F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Ta.3M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"), 
+                     tidy(Y.3M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(T.3M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(G.3M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "HSD") %>%
+                        mutate(generation= "F3"))
+
+HBtwnRslts.df <- rename(HBtwnrslts.df, c("lhs"="contrast")) 
+HBtwnRslts.df$exposure <- rep("NA", length(HBtwnRslts.df$generation))
+HBtwnRslts.df <- HBtwnRslts.df[,c("contrast", "estimate", "std.error", "statistic", "p.value", "generation", "metabolite", "sex", "exposure")]
+HBtwnRslts.df <- HBtwnRslts.df %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+results <- symnum(HBtwnRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+HBetweenResults <- cbind(HBtwnRslts.df, results)
+#write.csv(HBetweenResults, file = "Crosses Contrasts (H).csv")
+
+
+
+#NSD Female (F1)
+dataN$Sex <- factor(dataN$Sex, levels=c("female", "male"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc","MnPn", "MnPc", "McPn"))
+Ta.1F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Ta.1F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.1F.comps <- glht(Ta.1F.Mod, Ta.1F.contrast.matrix) 
+Ta.1F <- summary(Ta.1F.comps) 
+
+Y.1F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Y.1F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.1F.comps <- glht(Y.1F.Mod, Y.1F.contrast.matrix) 
+Y.1F <- summary(Y.1F.comps) 
+
+T.1F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+T.1F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.1F.comps <- glht(T.1F.Mod, T.1F.contrast.matrix) 
+T.1F <- summary(T.1F.comps) 
+
+G.1F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+G.1F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.1F.comps <- glht(G.1F.Mod, G.1F.contrast.matrix) 
+G.1F <- summary(G.1F.comps) 
+
+Fit.1F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN, Generation=="F1"))
+Fit.1F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,1,-1, 0),  
+  'Both vs Paternal NSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal NSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal NSD' = c(0,1,-1/2, -1/2))
+Fit.1F.comps <- glht(Fit.1F.Mod, Fit.1F.contrast.matrix) 
+Fit.1F <- summary(Fit.1F.comps) 
+
+#NSD Male (F1)
+dataN$Sex <- factor(dataN$Sex, levels=c("male", "female"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+Ta.1M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Ta.1M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.1M.comps <- glht(Ta.1M.Mod, Ta.1M.contrast.matrix) 
+Ta.1M <- summary(Ta.1M.comps) 
+
+Y.1M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+Y.1M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.1M.comps <- glht(Y.1M.Mod, Y.1M.contrast.matrix) 
+Y.1M <- summary(Y.1M.comps) 
+
+T.1M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+T.1M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.1M.comps <- glht(T.1M.Mod, T.1M.contrast.matrix) 
+T.1M <- summary(T.1M.comps) 
+
+G.1M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F1"))
+G.1M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.1M.comps <- glht(G.1M.Mod, G.1M.contrast.matrix) 
+G.1M <- summary(G.1M.comps) 
+
+#NSD Female (F2)
+dataN$Sex <- factor(dataN$Sex, levels=c("female", "male"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+Ta.2F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Ta.2F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.2F.comps <- glht(Ta.2F.Mod, Ta.2F.contrast.matrix) 
+Ta.2F <- summary(Ta.2F.comps) 
+
+Y.2F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Y.2F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.2F.comps <- glht(Y.2F.Mod, Y.2F.contrast.matrix) 
+Y.2F <- summary(Y.2F.comps) 
+
+T.2F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+T.2F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.2F.comps <- glht(T.2F.Mod, T.2F.contrast.matrix) 
+T.2F <- summary(T.2F.comps) 
+
+G.2F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+G.2F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.2F.comps <- glht(G.2F.Mod, G.2F.contrast.matrix) 
+G.2F <- summary(G.2F.comps) 
+
+Fit.2F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN, Generation=="F2"))
+Fit.2F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,1,-1, 0),  
+  'Both vs Paternal NSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal NSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal NSD' = c(0,1,-1/2, -1/2))
+Fit.2F.comps <- glht(Fit.2F.Mod, Fit.2F.contrast.matrix) 
+Fit.2F <- summary(Fit.2F.comps) 
+
+#NSD Male (F2)
+dataN$Sex <- factor(dataN$Sex, levels=c("male", "female"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+Ta.2M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Ta.2M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.2M.comps <- glht(Ta.2M.Mod, Ta.2M.contrast.matrix) 
+Ta.2M <- summary(Ta.2M.comps) 
+
+Y.2M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+Y.2M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.2M.comps <- glht(Y.2M.Mod, Y.2M.contrast.matrix) 
+Y.2M <- summary(Y.2M.comps) 
+
+T.2M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+T.2M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.2M.comps <- glht(T.2M.Mod, T.2M.contrast.matrix) 
+T.2M <- summary(T.2M.comps) 
+
+G.2M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F2"))
+G.2M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.2M.comps <- glht(G.2M.Mod, G.2M.contrast.matrix) 
+G.2M <- summary(G.2M.comps) 
+
+#NSD Female (F3)
+dataN$Sex <- factor(dataN$Sex, levels=c("female", "male"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+Ta.3F.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Ta.3F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.3F.comps <- glht(Ta.3F.Mod, Ta.3F.contrast.matrix) 
+Ta.3F <- summary(Ta.3F.comps) 
+
+Y.3F.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Y.3F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.3F.comps <- glht(Y.3F.Mod, Y.3F.contrast.matrix) 
+Y.3F <- summary(Y.3F.comps) 
+
+T.3F.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+T.3F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.3F.comps <- glht(T.3F.Mod, T.3F.contrast.matrix) 
+T.3F <- summary(T.3F.comps) 
+
+G.3F.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+G.3F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.3F.comps <- glht(G.3F.Mod, G.3F.contrast.matrix) 
+G.3F <- summary(G.3F.comps) 
+
+Fit.3F.Mod <- glm(Fitness ~ Crosses, data=subset(dataN, Generation=="F3"))
+Fit.3F.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,1,-1, 0),  
+  'Both vs Paternal NSD' = c(0,1,0, -1),  
+  'Maternal vs Paternal NSD' = c(0,0,1,-1),
+  'Both vs Maternal * Paternal NSD' = c(0,1,-1/2, -1/2))
+Fit.3F.comps <- glht(Fit.3F.Mod, Fit.3F.contrast.matrix) 
+Fit.3F <- summary(Fit.3F.comps) 
+
+#NSD Male (F3)
+dataN$Sex <- factor(dataN$Sex, levels=c("male", "female"))
+dataN$Crosses <- factor(dataN$Crosses, levels=c("McPc", "MnPn", "MnPc", "McPn"))
+Ta.3M.Mod <- glm(TAG ~ Fat.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Ta.3M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Ta.3M.comps <- glht(Ta.3M.Mod, Ta.3M.contrast.matrix) 
+Ta.3M <- summary(Ta.3M.comps) 
+
+Y.3M.Mod <- glm(Glycogen ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+Y.3M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+Y.3M.comps <- glht(Y.3M.Mod, Y.3M.contrast.matrix) 
+Y.3M <- summary(Y.3M.comps) 
+
+T.3M.Mod <- glm(Trehalose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+T.3M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+T.3M.comps <- glht(T.3M.Mod, T.3M.contrast.matrix) 
+T.3M <- summary(T.3M.comps) 
+
+G.3M.Mod <- glm(Glucose ~ Sugar.Weight + Sex*Crosses, data=subset(dataN, Generation=="F3"))
+G.3M.contrast.matrix <- rbind(
+  'Both vs Maternal NSD' = c(0,0,0,1,-1, 0,0,0,0),  
+  'Both vs Paternal NSD' = c(0,0,0,1,0, -1,0,0,0),  
+  'Maternal vs Paternal NSD' = c(0,0,0,0,1,-1,0,0,0),
+  'Both vs Maternal * Paternal NSD' = c(0,0,0,1,-1/2, -1/2,0,0,0))
+G.3M.comps <- glht(G.3M.Mod, G.3M.contrast.matrix) 
+G.3M <- summary(G.3M.comps) 
+
+#NSD Combined Results Dataframe
+NBtwnrslts.df <- rbind(tidy(Ta.1F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Y.1F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(T.1F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(G.1F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Fit.1F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Ta.1M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Y.1M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(T.1M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(G.1M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F1"),
+                     tidy(Ta.2F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Y.2F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(T.2F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(G.2F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Fit.2F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Ta.2M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Y.2M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(T.2M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(G.2M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F2"),
+                     tidy(Ta.3F) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Y.3F) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(T.3F) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(G.3F) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "female") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Fit.3F) %>% 
+                        mutate(metabolite = "Fitness") %>% 
+                        mutate(sex= "female") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(Ta.3M) %>% 
+                        mutate(metabolite = "TAG") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"), 
+                     tidy(Y.3M) %>% 
+                        mutate(metabolite = "Glycogen") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(T.3M) %>% 
+                        mutate(metabolite = "Trehalose") %>% 
+                        mutate(sex= "male") %>%
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"),
+                     tidy(G.3M) %>% 
+                        mutate(metabolite = "Glucose") %>% 
+                        mutate(sex= "male") %>% 
+                        mutate(treatment= "NSD") %>%
+                        mutate(generation= "F3"))
+
+NBtwnRslts.df <- rename(NBtwnrslts.df, c("lhs"="contrast")) 
+NBtwnRslts.df$exposure <- rep("NA", length(NBtwnRslts.df$generation))
+NBtwnRslts.df <- NBtwnRslts.df[,c("contrast", "estimate", "std.error", "statistic", "p.value", "generation", "metabolite", "sex", "exposure")]
+NBtwnRslts.df <- NBtwnRslts.df %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+results <- symnum(NBtwnRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+NBetweenResults <- cbind(NBtwnRslts.df, results)
+#write.csv(NBetweenResults, file = "Crosses Contrasts (N).csv")
+
+#Combined HSD and NSD Results Dataframe
+NBtwnrslts.df <- NBtwnrslts.df %>% mutate("NSD", treatment)
+HBtwnrslts.df <- HBtwnrslts.df %>% mutate("HSD", treatment)
+NHBtwnRslts.df <- bind_rows(NBtwnrslts.df, HBtwnrslts.df)
+NHBtwnRslts.df <- rename(NHBtwnRslts.df, c("lhs"="contrast")) 
+NHBtwnRslts.df$exposure <- rep("NA", length(NHBtwnRslts.df$generation))
+NHBtwnRslts.df <- NHBtwnRslts.df[,c("contrast", "estimate", "std.error", "statistic", "p.value", "generation", "metabolite", "treatment", "sex", "exposure")]
+NHBtwnRslts.df <- NHBtwnRslts.df %>% mutate(pAdj = p.adjust(p.value, method = "fdr"))
+results <- symnum(NHBtwnRslts.df$pAdj, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+NHBetweenResults <- cbind(NHBtwnRslts.df, results)
+#write.csv(NHBetweenResults, file = "Crosses Contrasts (N and H).csv")
+```
+Combine Between Treatment and Between Exposure Contrasts into a Single dataframe and do experiment-wide false discovery rate corrections. 
+```{r}
+Results <- rbind(NHresults, NHBetweenResults)
+Results <- Results %>% mutate(pAdjALL = p.adjust(p.value, method = "fdr"))
+SignifAll <- symnum(Results$pAdjALL, corr = FALSE, na = FALSE, cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***", "**", "*", ".", " "))
+Results <- cbind(Results, SignifAll)
+write.csv(Results, file = "NH All Contrasts 180901.csv")
+```
+Correlations for TAG vs Fit Data
+```{r}
+data <- read.csv(text=getURL("https://raw.githubusercontent.com/cemborski/Parent-of-Origin-Effects-on-Transgenerational-Inheritance-in-Drosophila-melanogaster/master/Data%20and%20Analysis/data.csv"))
+
+head(data)
+
+data <- data[,c("Generation", "Crosses", "Treatment", "Exposure", "Sex", "TAG", "Fitness")]
+data <- data[complete.cases(data),]
+data$smooth <- rep("1", length(data$Generation))
+
+
+cor.test(data$TAG, data$Fitness)
+cor.test(data$TAG, data$Fitness)$estimate ** 2 
+
+Fit.Treat.Mod <- glm(Fitness ~ Treatment, data=Data)
+
+plot(data$TAG~data$Fitness)
+#Additional analysis:
+#Data$smooth <- rep("1", length(Data$Generation))
+#TAGvFit.p <- ggplot(Data, aes(x=TAG, y=Fitness, color=Treatment, shape=Generation)) + geom_point(size=3, alpha=0.5) + geom_smooth(aes(group=smooth), color="black", method="lm") + theme_bw()  
+#TAGvFit.p
+
+```
+Sex-specific effects:
+```{r}
+data <- read.csv(text=getURL("https://raw.githubusercontent.com/cemborski/Parent-of-Origin-Effects-on-Transgenerational-Inheritance-in-Drosophila-melanogaster/master/Data%20and%20Analysis/data.csv"))
+
+
+GlucSugMod <- lm(Glucose~Sugar.Weight+Sex,  data=data)
+summary(GlucSugMod)
+
+TrehSugMod <- lm(Trehalose~Sugar.Weight+Sex,  data=data)
+summary(TrehSugMod)
+
+GlycSugMod <- lm(Glycogen~Sugar.Weight+Sex,  data=data)
+summary(GlycSugMod)
+
+TAGMod <- lm(TAG~Fat.Weight+Sex, data=data)
+summary(TAGMod)
+
+```
