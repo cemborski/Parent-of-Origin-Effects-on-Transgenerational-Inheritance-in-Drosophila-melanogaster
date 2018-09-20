@@ -19,7 +19,7 @@ library(ggsignif)
 
 Data
 ```{r, echo=FALSE}
-data <- read.csv(text=getURL("https://raw.githubusercontent.com/cemborski/Parent-of-Origin-Effects-on-Transgenerational-Inheritance-in-Drosophila-melanogaster/master/Data%20and%20Analysis/dataNEW.csv"))
+data <- read.csv(text=getURL("https://raw.githubusercontent.com/cemborski/Parent-of-Origin-Effects-on-Transgenerational-Inheritance-in-Drosophila-melanogaster/master/Data%20and%20Analysis/data.csv"))
 ```
 
 Treatment Contrasts relative to CD:
